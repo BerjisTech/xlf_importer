@@ -65,7 +65,7 @@ describe XlfImporter do
     it 'imports sample_alt_2.xlf' do
       file_path = File.expand_path('../xlf_importer/spec/test_sample_files/sample_alt_2.xlf')
       xlf = XlfImporter::Xlf.new(file_path: file_path, encoding: 'UTF-8')
-      expect(xlf.import).to eq(''))
+      expect(xlf.import).to eq('')
     end
 
     it 'imports a UTF-16 XLIFF file' do
