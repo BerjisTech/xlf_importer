@@ -131,6 +131,7 @@ module XlfImporter
     def write_seg(reader, role, language)
       return if reader.read_string.nil?
       text = PrettyStrings::Cleaner.new(reader.read_string).pretty.gsub("\\","&#92;").gsub("'",%q(\\\'))
+      return if text.nil? || text.empty?
       word_count = text.gsub("\s+", ' ').split(' ').length
       @doc[:seg][:vals] << [@doc[:tu][:id], role, word_count, language, text]
     end
