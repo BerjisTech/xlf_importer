@@ -12,6 +12,14 @@ module XlfImporter
       @content = File.read(open(@file_path)) if !args[:encoding].eql?('UTF-8')
       if args[:encoding].nil?
         @encoding = CharlockHolmes::EncodingDetector.detect(@content[0..100_000])[:encoding]
+        if @encoding.nil?
+          encoding_in_file = @content.dup.force_encoding('utf-8').scrub!("*").gsub!(/\0/, '').scan(/(?<=encoding=").*(?=")/)[0].upcase
+          if encoding_in_file.eql?('UTF-8')
+            @encoding = ('UTF-8')
+          elsif encoding_in_file.eql?('UTF-16')
+            @encoding = ('UTF-16LE')
+          end
+        end
       else
         @encoding = args[:encoding].upcase
       end
@@ -85,43 +93,39 @@ module XlfImporter
 
     def parse_file(reader)
       tag_stack = []
-      generate_unique_id
       while reader.read do
-        tag_stack.delete_if { |d| d.bytes.to_a == [101, 112, 116] ||
-                                  d.bytes.to_a == [98, 112, 116] ||
-                                  d.bytes.to_a == [112, 114, 111, 112] ||
-                                  d.bytes.to_a == [112, 104] }
-        if !tag_stack.include?(reader.name)
-          tag_stack.push(reader.name)
-          eval_state_initial(tag_stack, reader)
-        elsif tag_stack.last == reader.name
-          d = tag_stack.dup.pop
-          tag_stack.pop if d.bytes.to_a == [35, 116, 101, 120, 116]
-          generate_unique_id if tag_stack.length > 3 && tag_stack.pop.bytes.to_a == [116, 117]
-        end
+        eval_state_initial(tag_stack, reader)
       end
       reader.close
     end
 
     def eval_state_initial(tag_stack, reader)
-      case tag_stack.last.bytes.to_a
+      return if reader.name == tag_stack.dup.pop
+      tag_stack.push(reader.name)
+      case reader.name.bytes.to_a
       when [102, 105, 108, 101]
         @doc[:source_language] = reader.get_attribute("source-language") if @doc[:source_language].empty? && reader.has_attributes? && reader.get_attribute("source-language")
-        @doc[:target_language] = reader.get_attribute("target-language") if @doc[:source_language].empty? && reader.has_attributes? && reader.get_attribute("target-language")
+        @doc[:target_language] = reader.get_attribute("target-language") if @doc[:target_language].empty? && reader.has_attributes? && reader.get_attribute("target-language")
       when [116, 114, 97, 110, 115, 45, 117, 110, 105, 116]
+        unless tag_stack[-2].nil?
+          return if tag_stack[-2].bytes.to_a.eql?([98, 111, 100, 121]) || tag_stack[-2].bytes.to_a.eql?([116, 114, 97, 110, 115, 45, 117, 110, 105, 116])
+        end
         write_tu(reader)
         @doc[:tu][:counter] += 1
       when [115, 111, 117, 114, 99, 101] # source
+        @doc[:tu][:vals] << [@doc[:tu][:id]] unless @doc[:tu][:vals].include?([@doc[:tu][:id]])
         write_seg(reader, 'source', @doc[:source_language])
         @doc[:seg][:counter] += 1
       when [116, 97, 114, 103, 101, 116] # target
+        @doc[:target_language] = reader.get_attribute("xml:lang") if reader.has_attributes? && reader.get_attribute("xml:lang")
+        @doc[:target_language] = reader.get_attribute("lang") if reader.has_attributes? && reader.get_attribute("lang")
         write_seg(reader, 'target', @doc[:target_language])
         @doc[:seg][:counter] += 1
       end
     end
 
     def write_tu(reader)
-      @doc[:tu][:vals] << [@doc[:tu][:id]]
+      generate_unique_id
     end
 
     def write_seg(reader, role, language)

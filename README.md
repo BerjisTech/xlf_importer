@@ -21,7 +21,21 @@ gem 'xlf_importer'
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+# Get the high level stats of an XLIFF file
+# Including the encoding is optional. If not included the gem will attempt to detect the encoding.
+file_path = File.expand_path('../xlf_importer/spec/test_sample_files/sample_alt_translation.xlf')
+XlfImporter::Xlf.new(file_path: file_path).stats
+# => {:tu_count=>1, :seg_count=>3, :language_pairs=>[["en", "fr"], ["en", "es"]]}
+
+# Extract the segments of an XLIFF file
+# Result: [translation_units, segments]
+# translation_units = [tu_id]
+# segments = [tu_id, segment_role, word_count, language, segment_text]
+
+XlfImporter::Xlf.new(file_path: file_path).import
+# => [[["6234-1457917153-1"]], [["6234-1457917153-1", "source", 2, "en", "Hello world"], ["6234-1457917153-1", "target", 3, "fr", "Bonjour le monde"], ["6234-1457917153-1", "target", 2, "es", "Hola mundo"]]]
+```
 
 ## Contributing
 
