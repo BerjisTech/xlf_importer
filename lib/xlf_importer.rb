@@ -110,7 +110,7 @@ module XlfImporter
         unless tag_stack[-2].nil?
           return if tag_stack[-2].bytes.to_a.eql?([98, 111, 100, 121]) || tag_stack[-2].bytes.to_a.eql?([116, 114, 97, 110, 115, 45, 117, 110, 105, 116])
         end
-        write_tu(reader)
+        write_tu
         @doc[:tu][:counter] += 1
       when [115, 111, 117, 114, 99, 101] # source
         @doc[:tu][:vals] << [@doc[:tu][:id]] unless @doc[:tu][:vals].include?([@doc[:tu][:id]])
@@ -124,7 +124,7 @@ module XlfImporter
       end
     end
 
-    def write_tu(reader)
+    def write_tu
       generate_unique_id
     end
 
